@@ -102,12 +102,19 @@ function tidyNodes(nodes, gap) {
 /**
  * Fix the gap between each frame and its text label directly above it.
  * Also left-aligns the label with the frame.
- * Searches among siblings of the frame for the nearest TEXT node above it.
+ *
+ * Handles two cases:
+ *  1. Label is a sibling that has drifted inside the frame visually → reposition above.
+ *  2. Label is a child of the frame (accidentally dropped inside) → reparent out first.
  */
 function tidyLabels(frames, gap) {
   frames.forEach(frame => {
     const parent = frame.parent;
     if (!parent || !('children' in parent)) return;
+
+    // If a text child looks like an external label (near the top of the frame),
+    // move it out to be a sibling so we can position it cleanly above.
+    extractLabelFromFrame(frame, parent);
 
     const label = findLabelAbove(frame, parent.children);
     if (!label) return;
@@ -115,6 +122,29 @@ function tidyLabels(frames, gap) {
     label.y = frame.y - gap - label.height;
     label.x = frame.x;
   });
+}
+
+/**
+ * If the frame has a TEXT child near its top edge that looks like an external label
+ * (i.e. it was accidentally dragged inside), reparent it to the frame's parent.
+ * Uses a conservative threshold: top 15% of frame height or 60px, whichever is smaller.
+ */
+function extractLabelFromFrame(frame, parent) {
+  if (!('children' in frame) || frame.children.length === 0) return;
+
+  const threshold = Math.min(60, frame.height * 0.15);
+  const candidates = frame.children.filter(n => n.type === 'TEXT' && n.y < threshold);
+  if (candidates.length === 0) return;
+
+  // Pick the topmost text node
+  const label = candidates.reduce((best, n) => n.y < best.y ? n : best);
+
+  // Convert from frame-relative to parent-relative coords before reparenting
+  const absX = frame.x + label.x;
+  const absY = frame.y + label.y;
+  parent.appendChild(label);
+  label.x = absX;
+  label.y = absY;
 }
 
 /**
@@ -181,20 +211,22 @@ function groupByParent(nodes) {
 /**
  * Find the TEXT sibling that is most likely a label for the given frame.
  * Criteria:
- *   - Positioned above the frame (text bottom ≤ frame top)
+ *   - Text TOP is within [frame.top - 200px … frame.top + 120px]
+ *     (allows text that is properly above AND text that has drifted inside the frame)
  *   - x-range overlaps with the frame
- *   - Vertical gap ≤ 200px
- * Returns the closest candidate, or null.
+ * Returns the candidate whose bottom edge is closest to the frame top.
  */
 function findLabelAbove(frame, siblings) {
-  const MAX_GAP = 200;
+  const MAX_GAP     = 200; // how far above the frame top is still considered a label
+  const MAX_OVERLAP = 120; // how far inside the frame top is still considered a label
 
   const candidates = siblings.filter(node => {
     if (node.type !== 'TEXT') return false;
     if (node.id === frame.id) return false;
 
-    const gapY = frame.y - (node.y + node.height);
-    if (gapY < 0 || gapY > MAX_GAP) return false;
+    // Accept text whose top is within the search window
+    if (node.y < frame.y - MAX_GAP)     return false; // too far above
+    if (node.y > frame.y + MAX_OVERLAP) return false; // too deep inside
 
     // x overlap
     const tL = node.x, tR = node.x + node.width;
@@ -204,9 +236,10 @@ function findLabelAbove(frame, siblings) {
 
   if (candidates.length === 0) return null;
 
+  // Pick the node whose bottom edge is closest to the frame's top edge
   return candidates.reduce((best, n) => {
-    const dN = frame.y - (n.y + n.height);
-    const dB = frame.y - (best.y + best.height);
+    const dN = Math.abs(frame.y - (n.y + n.height));
+    const dB = Math.abs(frame.y - (best.y + best.height));
     return dN < dB ? n : best;
   });
 }
