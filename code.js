@@ -149,13 +149,12 @@ function extractLabelFromFrame(frame, parent) {
 
 /**
  * Resize a section to snugly fit its children with `padding` on all sides.
- * Leaves extra room at the top (40px) for the Figma section header label.
+ * The Figma section title lives above the section box, not inside it,
+ * so no extra header offset is needed — padding applies equally on all four sides.
  */
 function resizeSectionToFit(section, padding) {
   const children = section.children;
   if (children.length === 0) return;
-
-  const HEADER = 40; // Figma section title bar height
 
   // Compute bounding box of all children (in section-relative coords)
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -166,17 +165,17 @@ function resizeSectionToFit(section, padding) {
     maxY = Math.max(maxY, c.y + c.height);
   });
 
-  // Shift children so content starts at (padding, HEADER + padding)
+  // Shift children so content starts at (padding, padding) on all sides
   const offsetX = padding - minX;
-  const offsetY = HEADER + padding - minY;
+  const offsetY = padding - minY;
   children.forEach(c => {
     c.x += offsetX;
     c.y += offsetY;
   });
 
-  // Resize section to wrap content
+  // Resize section to wrap content with equal padding on all sides
   const newW = (maxX - minX) + padding * 2;
-  const newH = (maxY - minY) + padding * 2 + HEADER;
+  const newH = (maxY - minY) + padding * 2;
   section.resizeWithoutConstraints(newW, newH);
 }
 
