@@ -106,6 +106,14 @@
   </div>
 </div>
 
+<div class="field">
+  <label>Section padding</label>
+  <div class="row">
+    <input type="number" id="sectionPadding" value="40" min="0" max="200">
+    <span class="unit">px</span>
+  </div>
+</div>
+
 <div class="divider"></div>
 
 <button id="btn" onclick="tidy()">✦ Tidy Up</button>
@@ -114,11 +122,12 @@
 
 <script>
   function tidy() {
-    const frameGap = Math.max(0, parseInt(document.getElementById('frameGap').value) || 40);
-    const textGap  = Math.max(0, parseInt(document.getElementById('textGap').value)  || 16);
+    const frameGap      = Math.max(0, parseInt(document.getElementById('frameGap').value)      || 40);
+    const textGap       = Math.max(0, parseInt(document.getElementById('textGap').value)       || 16);
+    const sectionPadding = Math.max(0, parseInt(document.getElementById('sectionPadding').value) || 40);
     document.getElementById('status').className = '';
     document.getElementById('status').textContent = 'Working…';
-    parent.postMessage({ pluginMessage: { type: 'tidy', frameGap, textGap } }, '*');
+    parent.postMessage({ pluginMessage: { type: 'tidy', frameGap, textGap, sectionPadding } }, '*');
   }
 
   window.onmessage = (event) => {

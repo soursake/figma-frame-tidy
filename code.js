@@ -1,17 +1,17 @@
 // ─── Frame Tidy — Figma Plugin ───────────────────────────────────────────────
 // Equalizes frame spacing, cleans up text labels, and tidies sections.
 
-figma.showUI(__html__, { width: 260, height: 290, title: 'Frame Tidy' });
+figma.showUI(__html__, { width: 260, height: 330, title: 'Frame Tidy' });
 
 figma.ui.onmessage = (msg) => {
   if (msg.type === 'tidy') {
-    runTidy(msg.frameGap, msg.textGap);
+    runTidy(msg.frameGap, msg.textGap, msg.sectionPadding);
   }
 };
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-function runTidy(frameGap, textGap) {
+function runTidy(frameGap, textGap, sectionPadding = 40) {
   const sel = [...figma.currentPage.selection];
 
   if (sel.length === 0) {
@@ -37,7 +37,7 @@ function runTidy(frameGap, textGap) {
       const children = getFrameChildren(section);
       if (children.length > 1) tidyNodes(children, frameGap);
       if (children.length > 0) tidyLabels(children, textGap);
-      resizeSectionToFit(section, 40);
+      resizeSectionToFit(section, sectionPadding);
       count += children.length || 1;
     });
   }
